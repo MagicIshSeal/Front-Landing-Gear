@@ -1,16 +1,24 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_BMP280.h>
-#include <ESP32Servo.h>
 #include <MPU9250.h>
+#include <FRPPMReceiverSensor.h>
+#include "Gear.h"
 
-Adafruit_BMP280 altitude;
-MPU9250 imu(Wire, 0x68);
-
+// Define the pins
 const int buttonPin = 35;
 bool buttonPressed = false;
 unsigned long buttonPressTime = 0;
 float zeroPressure = 101325.0;
+const int ppmPin = 4;
+const int numChan = 4;
+const int lgSwitchChan = 1;
+
+// Create the objects
+Gear gear(26, 27);
+PPMReceiverSensor rx(ppmPin, numChan);
+Adafruit_BMP280 altitude;
+MPU9250 imu(Wire, 0x68);
 
 void print_roll_pitch_yaw()
 {
@@ -33,11 +41,11 @@ void print_roll_pitch_yaw()
       heading += 360.0;
     }
 
-    Serial.print("Yaw: ");
+    Serial.print(">Yaw: ");
     Serial.println(heading, 2);
-    Serial.print("Pitch: ");
+    Serial.print(">Pitch: ");
     Serial.println(pitch, 2);
-    Serial.print("Roll: ");
+    Serial.print(">Roll: ");
     Serial.println(roll, 2);
     Serial.println();
   }
@@ -45,59 +53,15 @@ void print_roll_pitch_yaw()
 
 void print_pressure_temperature()
 {
-  Serial.print("Pressure: ");
+  Serial.print(">Pressure: ");
   Serial.println(altitude.readPressure() / 100);
-  Serial.print("Temperature: ");
+  Serial.print(">Temperature: ");
   Serial.println(altitude.readTemperature());
   Serial.println();
 }
 
-void setup()
+void handle_button_press()
 {
-  Serial.begin(9600);
-  Wire.begin();
-  pinMode(buttonPin, INPUT_PULLUP);
-  delay(2000);
-
-  Serial.println(F("Altitude Sensor Test"));
-  if (!altitude.begin(0x76))
-  {
-    while (1)
-    {
-      Serial.println(F("Could not find a valid BMP280 sensor, check wiring or try a different address!"));
-      delay(500);
-    }
-  }
-  else
-  {
-    Serial.println(F("BMP280 sensor found"));
-  }
-
-  if (!imu.begin())
-  {
-    while (1)
-    {
-      Serial.println("MPU9250 connection failed. Please check your connection.");
-      delay(500);
-    }
-  }
-  else
-  {
-    Serial.println(F("MPU9250 sensor found"));
-  }
-  Serial.println("Calibrating IMU...");
-  imu.calibrateAccel();
-  Serial.println("Calibrating Gyro...");
-  imu.calibrateGyro();
-  // Serial.println("Calibrating Mag...");
-  // imu.calibrateMag();
-}
-
-void loop()
-{
-  print_roll_pitch_yaw();
-  print_pressure_temperature();
-
   if (digitalRead(buttonPin) == LOW)
   {
     if (!buttonPressed)
@@ -121,6 +85,76 @@ void loop()
     Serial.println(altitude.readAltitude(zeroPressure / 100));
     Serial.println();
   }
+}
 
-  delay(1000);
+void sensorCheck()
+{
+  Serial.println(F("Checking sensor availability"));
+  delay(100);
+  if (!imu.begin())
+  {
+    while (1)
+    {
+      Serial.println(F("MPU9250 connection failed. Please check your connection."));
+      delay(500);
+    }
+  }
+  else
+  {
+    Serial.println(F("MPU9250 sensor found"));
+  }
+
+  if (!altitude.begin(0x76))
+  {
+    while (1)
+    {
+      Serial.println(F("BMP280 connection failed. Please check your connection."));
+      delay(500);
+    }
+  }
+  else
+  {
+    Serial.println(F("BMP280 sensor found"));
+  }
+}
+
+void checkLandingGear()
+{
+  int lgSwitchState = rx.ReadChannel(lgSwitchChan);
+  if (lgSwitchState > 1500)
+  { // 1500 is threshold for switch, change upon testing
+    gear.down();
+  }
+  else
+  {
+    gear.up();
+  }
+}
+
+void setup()
+{
+  Serial.begin(9600);
+  Wire.begin();
+  rx.Init();
+  pinMode(buttonPin, INPUT_PULLUP);
+  delay(100);
+
+  sensorCheck();
+
+  Serial.println("Calibrating IMU...");
+  imu.calibrateAccel();
+  Serial.println("Calibrating Gyro...");
+  imu.calibrateGyro();
+  // Serial.println("Calibrating Mag...");
+  // imu.calibrateMag();
+}
+
+void loop()
+{
+  print_roll_pitch_yaw();
+  print_pressure_temperature();
+  handle_button_press();
+  checkLandingGear();
+  gear.update();
+  delay(500);
 }
