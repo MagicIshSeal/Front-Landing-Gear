@@ -9,7 +9,7 @@ private:
     Servo door;   // Servo for the door
     Servo deploy; // Servo for deploying the gear
 
-    int door_pin, deploy_pin, steer_pin; // Pins for the servos
+    int door_pin, deploy_pin; // Pins for the servos
     int doorOpenPos, doorClosedPos;      // Positions for the door servo
     int gearUpPos, gearDownPos;          // Positions for the deploy servo
 
