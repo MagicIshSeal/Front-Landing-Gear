@@ -27,10 +27,23 @@ void print_roll_pitch_yaw()
     float accelX = imu.getAccelX_mss();
     float accelY = imu.getAccelY_mss();
     float accelZ = imu.getAccelZ_mss();
+    float roll = 0;
 
     // Calculate pitch and roll
     float pitch = atan2(-accelX, sqrt(accelY * accelY + accelZ * accelZ)) * 180.0 / PI;
-    float roll = atan2(accelY, accelZ) * 180.0 / PI;
+    float rollraw = atan2(accelY, accelZ) * 180.0 / PI;
+    if (rollraw < 0)
+    {
+      roll = abs(rollraw) - 180;
+    }
+    else if (rollraw > 0)
+    {
+      roll = 180 - rollraw;
+    }
+    else
+    {
+      roll = rollraw;
+    }
 
     // Calculate heading (yaw) using magnetometer data
     float magX = imu.getMagX_uT();
