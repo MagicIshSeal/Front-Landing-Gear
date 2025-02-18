@@ -11,8 +11,8 @@ bool buttonPressed = false;
 unsigned long buttonPressTime = 0;
 float zeroPressure = 101325.0;
 const int ppmPin = 4;
-const int numChan = 4;
-const int lgSwitchChan = 1;
+const int numChan = 10;
+const int lgSwitchChan = 4;
 
 // Create the objects
 Gear gear(26, 27);
@@ -81,7 +81,7 @@ void handle_button_press()
   else
   {
     buttonPressed = false;
-    Serial.print("Altitude: ");
+    Serial.print(">Altitude: ");
     Serial.println(altitude.readAltitude(zeroPressure / 100));
     Serial.println();
   }
@@ -137,6 +137,7 @@ void setup()
   Wire.begin();
   rx.Init();
   pinMode(buttonPin, INPUT_PULLUP);
+  gear.init();
   delay(100);
 
   sensorCheck();
@@ -145,6 +146,7 @@ void setup()
   imu.calibrateAccel();
   Serial.println("Calibrating Gyro...");
   imu.calibrateGyro();
+  Serial.println("Calibrating Complete");
   // Serial.println("Calibrating Mag...");
   // imu.calibrateMag();
 }

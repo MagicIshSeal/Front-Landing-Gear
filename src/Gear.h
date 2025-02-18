@@ -2,39 +2,56 @@
 #define GEAR_H
 
 #include <ESP32Servo.h>
+#include <ServoEasing.hpp>
 
 class Gear
 {
 private:
-    Servo door;   // Servo for the door
-    Servo deploy; // Servo for deploying the gear
+    ServoEasing door;   // Servo for the door
+    ServoEasing deploy; // Servo for deploying the gear
 
-    int door_pin, deploy_pin; // Pins for the servos
-    int doorOpenPos, doorClosedPos;      // Positions for the door servo
-    int gearUpPos, gearDownPos;          // Positions for the deploy servo
+    int door_pin, deploy_pin;       // Pins for the servos
+    int doorOpenPos, doorClosedPos; // Positions for the door servo
+    int gearUpPos, gearDownPos;     // Positions for the deploy servo
 
-    unsigned long previousMillis; // Stores the last time the operation was updated
-    unsigned long interval;       // Interval between operations
-    bool operationInProgress;     // Flag to indicate if an operation is in progress
+    unsigned long interval; // Interval between operations
+    bool isDeployed;        // State variable to track gear position
 
-    // Enum to define the different operations
-    enum Operation
+    int doorSpeed;   // Speed for door servo movement
+    int deploySpeed; // Speed for deploy servo movement
+
+    enum GearState
     {
-        NONE,
-        OPEN_DOOR,
-        CLOSE_DOOR,
-        DEPLOY_GEAR,
-        RETRACT_GEAR
-    } currentOperation; // Stores the current operation
+        IDLE,
+        OPENING_DOOR,
+        DEPLOYING_GEAR,
+        RETRACTING_GEAR,
+        CLOSING_DOOR
+    };
+
+    GearState state;
+    unsigned long lastActionTime;
+
+    // Function to start moving servo smoothly using ServoEasing library
+    void startMoveServoSmoothly(ServoEasing &servo, int endPos, int speed)
+    {
+        servo.setSpeed(speed);
+        servo.startEaseTo(endPos);
+    }
 
 public:
     // Constructor to initialize the Gear class
-    Gear(int door_pin, int deploy_pin)
-        : door_pin(door_pin), deploy_pin(deploy_pin), previousMillis(0), interval(1500), operationInProgress(false), currentOperation(NONE) {}
+    Gear(int door_pin, int deploy_pin, int doorSpeed = 100, int deploySpeed = 100)
+        : door_pin(door_pin), deploy_pin(deploy_pin), interval(1500), isDeployed(false), state(IDLE), lastActionTime(0), doorSpeed(doorSpeed), deploySpeed(deploySpeed) {}
 
     // Initializes the servos and sets the initial positions
     void init()
     {
+        Serial.print("Initializing servos on pins: ");
+        Serial.print(door_pin);
+        Serial.print(", ");
+        Serial.println(deploy_pin);
+
         door.attach(door_pin);
         deploy.attach(deploy_pin);
 
@@ -49,53 +66,88 @@ public:
     // Starts the process to deploy the gear
     void down()
     {
-        currentOperation = OPEN_DOOR;
-        operationInProgress = true;
-        previousMillis = millis();
+        if (!isDeployed && state == IDLE)
+        {
+            Serial.println("Deploying gear...");
+            state = OPENING_DOOR;
+            lastActionTime = millis();
+        }
     }
 
     // Starts the process to retract the gear
     void up()
     {
-        currentOperation = RETRACT_GEAR;
-        operationInProgress = true;
-        previousMillis = millis();
+        if (isDeployed && state == IDLE)
+        {
+            Serial.println("Retracting gear...");
+            state = RETRACTING_GEAR;
+            lastActionTime = millis();
+        }
     }
 
-    // Updates the state of the gear based on the current operation and time elapsed
+    // Update function to be called in the main loop
     void update()
     {
-        if (operationInProgress)
+        unsigned long currentTime = millis();
+
+        switch (state)
         {
-            unsigned long currentMillis = millis();
-            if (currentMillis - previousMillis >= interval)
+        case IDLE:
+            // Do nothing
+            break;
+
+        case OPENING_DOOR:
+            if (currentTime - lastActionTime >= interval)
             {
-                previousMillis = currentMillis;
-                switch (currentOperation)
-                {
-                case OPEN_DOOR:
-                    door.write(doorOpenPos);        // Open the door
-                    currentOperation = DEPLOY_GEAR; // Next operation: deploy the gear
-                    break;
-                case CLOSE_DOOR:
-                    door.write(doorClosedPos);   // Close the door
-                    currentOperation = NONE;     // No more operations
-                    operationInProgress = false; // Operation complete
-                    break;
-                case DEPLOY_GEAR:
-                    deploy.write(gearDownPos);     // Deploy the gear
-                    currentOperation = CLOSE_DOOR; // Next operation: close the door
-                    break;
-                case RETRACT_GEAR:
-                    deploy.write(gearUpPos);       // Retract the gear
-                    currentOperation = CLOSE_DOOR; // Next operation: close the door
-                    break;
-                case NONE:
-                    operationInProgress = false; // No operation in progress
-                    break;
-                }
+                Serial.print(">door position: ");
+                Serial.println(doorOpenPos);
+                startMoveServoSmoothly(door, doorOpenPos, doorSpeed); // Start opening the door smoothly
+                lastActionTime = currentTime;
+                state = DEPLOYING_GEAR;
             }
+            break;
+
+        case DEPLOYING_GEAR:
+            if (currentTime - lastActionTime >= interval)
+            {
+                Serial.print(">gear position: ");
+                Serial.println(gearDownPos);
+                startMoveServoSmoothly(deploy, gearDownPos, deploySpeed); // Start deploying the gear smoothly
+                lastActionTime = currentTime;
+                state = IDLE;
+                isDeployed = true;
+                Serial.println("Gear deployed.");
+            }
+            break;
+
+        case RETRACTING_GEAR:
+            if (currentTime - lastActionTime >= interval)
+            {
+                Serial.print(">gear position: ");
+                Serial.println(gearUpPos);
+                startMoveServoSmoothly(deploy, gearUpPos, deploySpeed); // Start retracting the gear smoothly
+                lastActionTime = currentTime;
+                state = CLOSING_DOOR;
+            }
+            break;
+
+        case CLOSING_DOOR:
+            if (currentTime - lastActionTime >= interval)
+            {
+                Serial.print(">door position: ");
+                Serial.println(doorClosedPos);
+                startMoveServoSmoothly(door, doorClosedPos, doorSpeed); // Start closing the door smoothly
+                lastActionTime = currentTime;
+                state = IDLE;
+                isDeployed = false;
+                Serial.println("Gear retracted and door closed.");
+            }
+            break;
         }
+
+        // Update the servos to ensure smooth movement
+        door.update();
+        deploy.update();
     }
 };
 
