@@ -57,7 +57,7 @@ public:
 
         doorOpenPos = 60;
         doorClosedPos = 0;
-        gearUpPos = 0;
+        gearUpPos = 5;
         gearDownPos = 90;
 
         up(); // Start with the gear retracted
