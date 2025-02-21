@@ -47,9 +47,14 @@ This project controls the front landing gear of an aircraft model using an ESP32
    - MPU9250
    - FRPPMReceiverSensor
 
-4. Connect the hardware components as per the pin definitions in the code.
+4. Due to the way PlatformIO interprets the FRLib Basics library, you have to remove the following 2 files after initialisation.
+   `.pio\libdeps\esp32doit-devkit-v1\FRLibBasics\src\FRLED.cpp`
+   `.pio\libdeps\esp32doit-devkit-v1\FRLibBasics\src\FRRGBLED.h`
+   `.pio\libdeps\esp32doit-devkit-v1\FRLibBasics\src\FRRGBLED.cpp`
 
-5. Upload the code to the ESP32 microcontroller.
+5. Connect the hardware components as per the pin definitions in the code.
+
+6. Upload the code to the ESP32 microcontroller.
 
 ## Usage
 
