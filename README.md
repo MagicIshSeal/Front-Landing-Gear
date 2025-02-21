@@ -48,9 +48,10 @@ This project controls the front landing gear of an aircraft model using an ESP32
    - FRPPMReceiverSensor
 
 4. Due to the way PlatformIO interprets the FRLib Basics library, you have to remove the following 2 files after initialisation.
-   `.pio\libdeps\esp32doit-devkit-v1\FRLibBasics\src\FRLED.cpp`
-   `.pio\libdeps\esp32doit-devkit-v1\FRLibBasics\src\FRRGBLED.h`
-   `.pio\libdeps\esp32doit-devkit-v1\FRLibBasics\src\FRRGBLED.cpp`
+
+   - `.pio\libdeps\esp32doit-devkit-v1\FRLibBasics\src\FRLED.cpp`
+   - `.pio\libdeps\esp32doit-devkit-v1\FRLibBasics\src\FRRGBLED.h`
+   - `.pio\libdeps\esp32doit-devkit-v1\FRLibBasics\src\FRRGBLED.cpp`
 
 5. Connect the hardware components as per the pin definitions in the code.
 
